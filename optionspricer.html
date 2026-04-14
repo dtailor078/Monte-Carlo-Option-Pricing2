@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Options Pricer — Dhyan Tailor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:           #0b1220;
+    --bg-panel:     #111927;
+    --bg-panel2:    #0f1622;
+    --bg-input:     #0d1520;
+    --bg-metric:    #0e1b2e;
+    --border:       rgba(99,140,190,0.14);
+    --border-md:    rgba(99,140,190,0.22);
+    --border-focus: #4d8fd4;
+
+    --text:         #e8eef6;
+    --text-2:       #8fa8c4;
+    --text-3:       #4d6480;
+
+    /* accent palette — vivid against the dark bg */
+    --blue:         #4d9de0;
+    --blue-dim:     rgba(77,157,224,0.15);
+    --teal:         #2fc89a;
+    --teal-dim:     rgba(47,200,154,0.13);
+    --amber:        #f5a623;
+    --amber-dim:    rgba(245,166,35,0.13);
+    --red:          #e05c5c;
+    --red-dim:      rgba(224,92,92,0.13);
+    --violet:       #a78bfa;
+
+    --radius:       10px;
+    --radius-sm:    6px;
+    --font:         'Inter', -apple-system, sans-serif;
+    --mono:         'IBM Plex Mono', monospace;
+
+    /* chart accent colours — high contrast */
+    --c-mc:         #60b8ff;
+    --c-bs:         #34e0a1;
+    --c-intr:       #ff7043;
+    --c-hist:       #7c6afb;
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem 3rem;
+  }
+
+  .page { max-width: 980px; margin: 0 auto; }
+
+  /* ── header ── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+  }
+  .title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text);
+  }
+  .badge {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--blue-dim);
+    color: var(--blue);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid rgba(77,157,224,0.2);
+  }
+  .byline {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-left: auto;
+    font-weight: 400;
+  }
+
+  /* ── grid ── */
+  .main-grid  { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .bottom-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 1.25rem; }
+  @media (max-width: 640px) {
+    .main-grid, .bottom-grid, .glossary-grid { grid-template-columns: 1fr !important; }
+  }
+
+  /* ── panel ── */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+  }
+  .panel-title {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1rem;
+  }
+
+  /* ── presets ── */
+  .preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .preset-btn {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 11px;
+    border: 1px solid var(--border-md);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: var(--font);
+  }
+  .preset-btn:hover {
+    background: var(--blue-dim);
+    border-color: rgba(77,157,224,0.3);
+    color: var(--blue);
+  }
+
+  /* ── toggle ── */
+  .toggle-row { display: flex; gap: 6px; margin-bottom: 0.85rem; }
+  .toggle-btn {
+    flex: 1;
+    padding: 7px 0;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border-md);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: all 0.13s;
+    font-family: var(--font);
+  }
+  .toggle-btn.active {
+    background: var(--blue-dim);
+    color: var(--blue);
+    border-color: rgba(77,157,224,0.35);
+  }
+
+  /* ── param inputs ── */
+  .param-group { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 0.75rem; }
+  .param-field { display: flex; flex-direction: column; gap: 4px; }
+  .param-label { font-size: 11px; color: var(--text-2); }
+  .param-input {
+    font-size: 12px;
+    font-family: var(--mono);
+    padding: 7px 10px;
+    border: 1px solid var(--border-md);
+    border-radius: var(--radius-sm);
+    background: var(--bg-input);
+    color: var(--text);
+    width: 100%;
+    transition: border-color 0.12s, box-shadow 0.12s;
+    outline: none;
+  }
+  .param-input:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(77,143,212,0.12);
+  }
+  .param-input.err { border-color: var(--red); }
+  .hint { font-size: 10px; color: var(--text-3); }
+
+  /* ── run btn ── */
+  .run-btn {
+    width: 100%;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(77,157,224,0.35);
+    border-radius: var(--radius-sm);
+    background: var(--blue-dim);
+    color: var(--blue);
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: all 0.13s;
+    letter-spacing: 0.02em;
+    font-family: var(--font);
+  }
+  .run-btn:hover { background: rgba(77,157,224,0.22); }
+  .run-btn:active { transform: scale(0.98); }
+
+  /* ── metrics ── */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+  .metric {
+    background: var(--bg-metric);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.8rem 1rem;
+  }
+  .metric-label { font-size: 10px; color: var(--text-3); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.07em; }
+  .metric-val { font-size: 20px; font-weight: 500; color: var(--text); font-family: var(--mono); }
+  .metric-val.pos { color: var(--teal); }
+  .metric-val.neg { color: var(--red); }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+  .chart-label { font-size: 10px; color: var(--text-3); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.07em; }
+  .chart-wrap { position: relative; width: 100%; height: 210px; }
+
+  /* ── vol table ── */
+  .vol-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  .vol-table th {
+    font-size: 10px; color: var(--text-3); font-weight: 600;
+    text-align: right; padding: 5px 7px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .vol-table th:first-child { text-align: left; }
+  .vol-table td {
+    padding: 6px 7px; color: var(--text); text-align: right;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-size: 12px;
+  }
+  .vol-table td:first-child { text-align: left; color: var(--text-2); font-family: var(--font); }
+  .vol-table tr:last-child td { border-bottom: none; }
+  .vol-table tr.hl td { font-weight: 600; background: rgba(77,157,224,0.07); color: var(--blue); }
+  .vol-table tr.hl td:first-child { color: var(--blue); }
+
+  /* ── legend ── */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--text-2); margin-bottom: 10px; }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .ld { width: 14px; height: 3px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── error msg ── */
+  .err-msg { font-size: 11px; color: var(--red); margin-top: 4px; min-height: 14px; }
+
+  /* ── glossary ── */
+  .glossary-section { margin-top: 1.25rem; }
+  .glossary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  @media (max-width: 700px) { .glossary-grid { grid-template-columns: 1fr 1fr; } }
+  .gcard {
+    background: var(--bg-panel2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.9rem 1rem;
+  }
+  .gcard-term {
+    font-size: 12px; font-weight: 500; color: var(--text);
+    margin-bottom: 5px; display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  }
+  .gtag {
+    font-size: 10px; font-weight: 600; padding: 1px 6px;
+    border-radius: 3px; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .gtag-input  { background: var(--blue-dim);  color: var(--blue); }
+  .gtag-output { background: var(--teal-dim);  color: var(--teal); }
+  .gtag-model  { background: var(--amber-dim); color: var(--amber); }
+  .gcard-def { font-size: 11.5px; color: var(--text-2); line-height: 1.6; }
+
+  /* ── footer ── */
+  .footer {
+    margin-top: 2rem;
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-3);
+    padding-bottom: 1rem;
+  }
+  .footer a { color: var(--text-3); text-decoration: none; }
+  .footer a:hover { color: var(--text-2); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="title">Options Pricer</div>
+    <div class="badge">Monte Carlo</div>
+    <span class="byline">built by Dhyan Tailor</span>
+  </div>
+
+  <div class="main-grid">
+    <div class="panel">
+      <div class="panel-title">Parameters</div>
+      <div class="preset-row" id="presets"></div>
+      <div class="toggle-row">
+        <button class="toggle-btn active" id="btn-call" onclick="setType('call')">Call</button>
+        <button class="toggle-btn" id="btn-put" onclick="setType('put')">Put</button>
+      </div>
+      <div class="param-group">
+        <div class="param-field">
+          <span class="param-label">Spot price (S₀)</span>
+          <input class="param-input" type="number" id="spot" value="100" min="1" step="0.01" placeholder="e.g. 100">
+        </div>
+        <div class="param-field">
+          <span class="param-label">Strike price (K)</span>
+          <input class="param-input" type="number" id="strike" value="100" min="1" step="0.01" placeholder="e.g. 100">
+        </div>
+        <div class="param-field">
+          <span class="param-label">Volatility (%)</span>
+          <input class="param-input" type="number" id="vol" value="20" min="1" max="200" step="0.1" placeholder="e.g. 20">
+          <span class="hint">AAPL ~26%, TSLA ~58%</span>
+        </div>
+        <div class="param-field">
+          <span class="param-label">Risk-free rate (%)</span>
+          <input class="param-input" type="number" id="rate" value="5" min="0" max="30" step="0.1" placeholder="e.g. 5">
+          <span class="hint">UK base rate ~5.25%</span>
+        </div>
+        <div class="param-field">
+          <span class="param-label">Time to maturity (yrs)</span>
+          <input class="param-input" type="number" id="ttm" value="1" min="0.01" max="10" step="0.01" placeholder="e.g. 0.25">
+          <span class="hint">0.25 = 3 months</span>
+        </div>
+        <div class="param-field">
+          <span class="param-label">Simulations</span>
+          <input class="param-input" type="number" id="npaths" value="20000" min="1000" max="100000" step="1000" placeholder="e.g. 20000">
+          <span class="hint">Higher = slower but more accurate</span>
+        </div>
+      </div>
+      <div class="err-msg" id="err-msg"></div>
+      <button class="run-btn" onclick="runSimulation()">Run simulation</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Results</div>
+      <div class="metrics">
+        <div class="metric"><div class="metric-label">MC price</div><div class="metric-val" id="mc-price">—</div></div>
+        <div class="metric"><div class="metric-label">Black-Scholes</div><div class="metric-val" id="bs-price">—</div></div>
+        <div class="metric"><div class="metric-label">95% CI (±)</div><div class="metric-val" id="ci-val">—</div></div>
+        <div class="metric"><div class="metric-label">MC vs BS error</div><div class="metric-val" id="error-val">—</div></div>
+      </div>
+      <hr class="divider">
+      <div class="chart-label">Payoff distribution</div>
+      <div class="chart-wrap"><canvas id="distChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="bottom-grid">
+    <div class="panel">
+      <div class="panel-title">Volatility sensitivity</div>
+      <table class="vol-table">
+        <thead><tr><th>Vol</th><th>MC price</th><th>BS price</th><th>Delta</th></tr></thead>
+        <tbody id="vol-tbody">
+          <tr><td colspan="4" style="text-align:center;padding:1rem;color:var(--text-3)">Run simulation to populate</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Price vs spot (payoff profile)</div>
+      <div class="legend">
+        <span><span class="ld" style="background:var(--c-mc)"></span>MC price</span>
+        <span><span class="ld" style="background:var(--c-bs)"></span>BS price</span>
+        <span><span class="ld" style="background:var(--c-intr)"></span>Intrinsic</span>
+      </div>
+      <div class="chart-wrap"><canvas id="profileChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="glossary-section">
+    <div class="panel">
+      <div class="panel-title">Key concepts</div>
+      <div class="glossary-grid">
+        <div class="gcard">
+          <div class="gcard-term">Spot price (S₀) <span class="gtag gtag-input">input</span></div>
+          <div class="gcard-def">The current market price of the underlying asset — what it's trading at right now.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Strike price (K) <span class="gtag gtag-input">input</span></div>
+          <div class="gcard-def">The price at which you have the right to buy (call) or sell (put) the asset when the option expires.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Call vs put <span class="gtag gtag-input">input</span></div>
+          <div class="gcard-def">A call profits if the price rises above the strike. A put profits if the price falls below the strike.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Volatility (σ) <span class="gtag gtag-input">input</span></div>
+          <div class="gcard-def">How much the asset price fluctuates annually. Higher vol = wider range of outcomes = more expensive option.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Risk-free rate <span class="gtag gtag-input">input</span></div>
+          <div class="gcard-def">The return on a riskless investment (e.g. government bonds). Used to discount future payoffs to today's value.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Time to maturity <span class="gtag gtag-input">input</span></div>
+          <div class="gcard-def">How long until the option expires, in years. More time = more uncertainty = higher option value.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">MC price <span class="gtag gtag-output">output</span></div>
+          <div class="gcard-def">The option price estimated by averaging discounted payoffs across thousands of simulated price paths.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Black-Scholes price <span class="gtag gtag-output">output</span></div>
+          <div class="gcard-def">The analytical closed-form price. Used as a benchmark — MC should converge to this with enough paths.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">95% CI <span class="gtag gtag-output">output</span></div>
+          <div class="gcard-def">Confidence interval on the MC estimate (±1.96 × std error). Narrows as simulation count increases.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Delta <span class="gtag gtag-output">output</span></div>
+          <div class="gcard-def">How much the option price changes for a $1 move in the underlying. Ranges 0–1 for calls, -1–0 for puts.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Intrinsic value <span class="gtag gtag-output">output</span></div>
+          <div class="gcard-def">The payoff if exercised right now — max(S−K, 0) for a call. Option price is always ≥ intrinsic value.</div>
+        </div>
+        <div class="gcard">
+          <div class="gcard-term">Geometric Brownian motion <span class="gtag gtag-model">model</span></div>
+          <div class="gcard-def">The stochastic process used to simulate price paths: drift (risk-free rate) plus random Gaussian shocks.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Options Pricer · Monte Carlo simulation · built by Dhyan Tailor</div>
+</div>
+
+<script>
+let optType = 'call';
+let distChartInst = null;
+let profileChartInst = null;
+
+const PRESETS = [
+  { label: 'AAPL',  spot: 213,  strike: 215, vol: 26,   rate: 5.25, ttm: 0.25 },
+  { label: 'TSLA',  spot: 250,  strike: 250, vol: 58,   rate: 5.25, ttm: 0.5  },
+  { label: 'SPY',   spot: 520,  strike: 520, vol: 15,   rate: 5.25, ttm: 1    },
+  { label: 'NVDA',  spot: 875,  strike: 900, vol: 52,   rate: 5.25, ttm: 0.5  },
+  { label: 'Brent', spot: 82,   strike: 85,  vol: 30,   rate: 5.0,  ttm: 0.25 },
+];
+
+const pr = document.getElementById('presets');
+PRESETS.forEach(p => {
+  const b = document.createElement('button');
+  b.className = 'preset-btn'; b.textContent = p.label;
+  b.onclick = () => loadPreset(p);
+  pr.appendChild(b);
+});
+
+function loadPreset(p) {
+  document.getElementById('spot').value   = p.spot;
+  document.getElementById('strike').value = p.strike;
+  document.getElementById('vol').value    = p.vol;
+  document.getElementById('rate').value   = p.rate;
+  document.getElementById('ttm').value    = p.ttm;
+  runSimulation();
+}
+
+function setType(t) {
+  optType = t;
+  document.getElementById('btn-call').className = 'toggle-btn' + (t === 'call' ? ' active' : '');
+  document.getElementById('btn-put').className  = 'toggle-btn' + (t === 'put'  ? ' active' : '');
+}
+
+function getVal(id) { return parseFloat(document.getElementById(id).value); }
+
+function validate() {
+  const fields = ['spot','strike','vol','rate','ttm','npaths'];
+  let ok = true;
+  fields.forEach(f => {
+    const el = document.getElementById(f);
+    const bad = isNaN(parseFloat(el.value)) || parseFloat(el.value) <= 0;
+    el.className = 'param-input' + (bad ? ' err' : '');
+    if (bad) ok = false;
+  });
+  document.getElementById('err-msg').textContent = ok ? '' : 'All fields must be positive numbers.';
+  return ok;
+}
+
+function normCDF(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign = x < 0 ? -1 : 1; x = Math.abs(x) / Math.sqrt(2);
+  const t = 1 / (1 + p * x);
+  const y = 1 - (((((a5*t+a4)*t)+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return 0.5 * (1 + sign * y);
+}
+
+function blackScholes(S,K,r,sigma,T,type) {
+  if (T <= 0) return type === 'call' ? Math.max(S-K,0) : Math.max(K-S,0);
+  const d1 = (Math.log(S/K) + (r + 0.5*sigma*sigma)*T) / (sigma*Math.sqrt(T));
+  const d2 = d1 - sigma*Math.sqrt(T);
+  return type === 'call'
+    ? S*normCDF(d1) - K*Math.exp(-r*T)*normCDF(d2)
+    : K*Math.exp(-r*T)*normCDF(-d2) - S*normCDF(-d1);
+}
+
+function randn() {
+  let u=0, v=0;
+  while (!u) u = Math.random(); while (!v) v = Math.random();
+  return Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+}
+
+function monteCarlo(S,K,r,sigma,T,type,nPaths,nSteps=50) {
+  const dt=T/nSteps, drift=(r-0.5*sigma*sigma)*dt, diff=sigma*Math.sqrt(dt), disc=Math.exp(-r*T);
+  let sum=0, sum2=0; const payoffs=[];
+  for (let i=0; i<nPaths; i++) {
+    let logS = Math.log(S);
+    for (let j=0; j<nSteps; j++) logS += drift + diff*randn();
+    const ST = Math.exp(logS);
+    const pay = type === 'call' ? Math.max(ST-K,0) : Math.max(K-ST,0);
+    const dp = disc*pay; payoffs.push(dp); sum+=dp; sum2+=dp*dp;
+  }
+  const mean = sum/nPaths, se = Math.sqrt((sum2/nPaths - mean*mean)/nPaths);
+  return { price: mean, se, payoffs };
+}
+
+function buildHistogram(payoffs, bins=35) {
+  const max = Math.max(...payoffs) || 1;
+  const binSize = max/bins, counts = new Array(bins+1).fill(0), labels = [];
+  for (let i=0; i<=bins; i++) labels.push((i*binSize).toFixed(2));
+  payoffs.forEach(p => { counts[Math.min(Math.floor(p/binSize), bins)]++; });
+  return { labels, counts };
+}
+
+function bsDelta(S,K,r,sigma,T,type) {
+  if (T <= 0) return type === 'call' ? (S>K?1:0) : (S<K?-1:0);
+  const d1 = (Math.log(S/K) + (r+0.5*sigma*sigma)*T) / (sigma*Math.sqrt(T));
+  return type === 'call' ? normCDF(d1) : normCDF(d1)-1;
+}
+
+// fixed dark theme colours for charts
+const GRID  = 'rgba(99,140,190,0.08)';
+const TICK  = 'rgba(143,168,196,0.55)';
+const C_MC   = '#60b8ff';
+const C_BS   = '#34e0a1';
+const C_INTR = '#ff7043';
+const C_HIST = '#7c6afb';
+
+function runSimulation() {
+  if (!validate()) return;
+  const S=getVal('spot'), K=getVal('strike'), sigma=getVal('vol')/100,
+        r=getVal('rate')/100, T=getVal('ttm'), nPaths=Math.round(getVal('npaths'));
+
+  const { price: mcPrice, se, payoffs } = monteCarlo(S,K,r,sigma,T,optType,nPaths);
+  const bsPrice = blackScholes(S,K,r,sigma,T,optType);
+  const ci = 1.96*se, err = Math.abs(mcPrice-bsPrice);
+
+  document.getElementById('mc-price').textContent = '$' + mcPrice.toFixed(4);
+  document.getElementById('bs-price').textContent = '$' + bsPrice.toFixed(4);
+  document.getElementById('ci-val').textContent   = '$' + ci.toFixed(4);
+  const errEl = document.getElementById('error-val');
+  errEl.textContent = '$' + err.toFixed(4);
+  errEl.className = 'metric-val' + (err < 0.05 ? ' pos' : err < 0.2 ? '' : ' neg');
+
+  // histogram
+  const { labels, counts } = buildHistogram(payoffs);
+  if (distChartInst) distChartInst.destroy();
+  distChartInst = new Chart(document.getElementById('distChart'), {
+    type: 'bar',
+    data: { labels, datasets: [{
+      data: counts,
+      backgroundColor: 'rgba(124,106,251,0.45)',
+      borderColor: C_HIST,
+      borderWidth: 1,
+      borderRadius: 2
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: {
+          label: c => `${c.parsed.y} paths`,
+          title: t => '$'+parseFloat(labels[t[0].dataIndex]).toFixed(2)
+        }}
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit:6, font:{size:10}, color: TICK, callback: v => '$'+parseFloat(labels[v]).toFixed(0) }, grid: { display: false }},
+        y: { ticks: { font:{size:10}, color: TICK }, grid: { color: GRID }}
+      }
+    }
+  });
+
+  // vol sensitivity table
+  const vols = [0.10,0.15,0.20,0.25,0.30,0.40,0.50,0.60];
+  const tbody = document.getElementById('vol-tbody'); tbody.innerHTML = '';
+  vols.forEach(v => {
+    const mc2 = monteCarlo(S,K,r,v,T,optType,5000);
+    const bs2 = blackScholes(S,K,r,v,T,optType);
+    const d = bsDelta(S,K,r,v,T,optType);
+    const tr = document.createElement('tr');
+    if (Math.abs(v-sigma) < 0.001) tr.className = 'hl';
+    tr.innerHTML = `<td>${(v*100).toFixed(0)}%</td><td>$${mc2.price.toFixed(3)}</td><td>$${bs2.toFixed(3)}</td><td>${d.toFixed(3)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // payoff profile
+  const spots=[], mcP=[], bsP=[], intr=[];
+  const lo=Math.max(S*0.4,1), hi=S*1.6, step=(hi-lo)/30;
+  for (let s=lo; s<=hi; s+=step) {
+    spots.push(+s.toFixed(1));
+    mcP.push(+monteCarlo(s,K,r,sigma,T,optType,3000).price.toFixed(3));
+    bsP.push(+blackScholes(s,K,r,sigma,T,optType).toFixed(3));
+    intr.push(+(optType==='call' ? Math.max(s-K,0) : Math.max(K-s,0)).toFixed(3));
+  }
+  if (profileChartInst) profileChartInst.destroy();
+  profileChartInst = new Chart(document.getElementById('profileChart'), {
+    type: 'line',
+    data: { labels: spots, datasets: [
+      { data: mcP,  borderColor: C_MC,   backgroundColor: 'transparent', borderWidth: 2,   pointRadius: 0, tension: 0.3 },
+      { data: bsP,  borderColor: C_BS,   backgroundColor: 'transparent', borderWidth: 2,   pointRadius: 0, tension: 0.3, borderDash: [5,3] },
+      { data: intr, borderColor: C_INTR, backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, borderDash: [2,4] },
+    ]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }},
+      scales: {
+        x: { ticks: { maxTicksLimit:7, font:{size:10}, color: TICK, callback: v => '$'+spots[v] }, grid: { display: false }},
+        y: { ticks: { font:{size:10}, color: TICK, callback: v => '$'+v }, grid: { color: GRID }}
+      }
+    }
+  });
+}
+
+runSimulation();
+</script>
+</body>
+</html>
